@@ -2,23 +2,31 @@ use winit::event::*;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
-use wgpu::Adapter;
 use wgpu::Backends;
 use wgpu::Instance;
 use wgpu::InstanceDescriptor;
-use std::future::Future;
-fn main() {
+
+#[tokio::main]
+async fn main() {
+    println!()
 }
 
 struct State {
-    event_loop: EventLoop<()>,
+    surface: wgpu::Surface,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    config: wgpu::SurfaceConfiguration,
+    size: winit::dpi::PhysicalSize<u32>,
     window: Window,
+    event_loop: EventLoop<()>
 }
 
 impl State {
     pub async fn new() -> Self {
         let event_loop = EventLoop::new();
         let window = Window::new(&event_loop).expect("Could not create a window");
+
+        let size = window.inner_size();
 
         let instance = Instance::new(InstanceDescriptor {
             backends: Backends::all(),
@@ -45,19 +53,38 @@ impl State {
                     features: wgpu::Features::empty(),
                     // WebGL doesn't support all of wgpu's features, so if
                     // we're building for the web we'll have to disable some.
-                    limits: if cfg!(target_arch = "wasm32") {
-                        wgpu::Limits::downlevel_webgl2_defaults()
-                    } else {
-                        wgpu::Limits::default()
-                    },
+                    limits: wgpu::Limits::default(),
                     label: None,
                 },
             None, // Trace path
         ).await.unwrap();
 
+        let surface_caps = surface.get_capabilities(&adapter);
+
+        let surface_format = surface_caps.formats.iter()
+            .copied()
+            .filter(|f| f.describe().srgb)
+            .next()
+            .unwrap_or(surface_caps.formats[0]);
+
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: size.width,
+            height: size.height,
+            present_mode: surface_caps.present_modes[0],
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
+        };
+
         Self {
             event_loop: event_loop,
             window: window,
+            surface: surface,
+            queue: queue,
+            device: device,
+            config: config,
+            size: size
         }
     }
 
