@@ -8,7 +8,7 @@ use wgpu::InstanceDescriptor;
 
 #[tokio::main]
 async fn main() {
-    println!()
+    State::new().await.run();
 }
 
 struct State {
@@ -88,7 +88,7 @@ impl State {
         }
     }
 
-    pub fn run(self) {
+    pub fn run(mut self) {
         let window = self.window;
         self.event_loop.run(move |root_event, _, control_flow| {
             control_flow.set_wait();
@@ -96,11 +96,21 @@ impl State {
                 Event::MainEventsCleared => window.request_redraw(),
                 Event::WindowEvent { window_id, event } => match event {
                     WindowEvent::CloseRequested => control_flow.set_exit(),
+                    WindowEvent::Resized(new_size) => self.resize(new_size),
                     _ => {}
                 },
                 Event::RedrawRequested(_) => {}
                 _ => {}
             }
         });
+    }
+
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        if new_size.width > 0 && new_size.height > 0 {
+            self.size = new_size;
+            self.config.width = new_size.width;
+            self.config.height = new_size.height;
+            self.surface.configure(&self.device, &self.config);
+        }
     }
 }
